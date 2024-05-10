@@ -1,0 +1,9 @@
+Django
+django-cors-headers
+django-extensions
+djangorestframework
+PyJWT
+six
+psycopg2
+drf-yasg
+setuptools
