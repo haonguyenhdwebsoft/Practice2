@@ -1,14 +1,34 @@
 from django.shortcuts import render
 from rest_framework import generics, status
-from .models import Product
-from .serializers import ProductSerializer
+from .models import Product, Category
+from .serializers import ProductSerializer, CategorySerializer
 from .renderers import ProductJSONRenderer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .services import ProductServiceMixin
+from apps.core.models import APIResponse
+from .tasks import notify_user
 
 # Create your views here.
-class ProductListCreateAPIView(ProductServiceMixin, generics.ListCreateAPIView):
+class CategoryListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    renderer_classes = (ProductJSONRenderer,)
+    permission_classes = (IsAuthenticated,)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.serializer_class(queryset, many=True)
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
+        return Response(api_response.get_response(), status=status.HTTP_200_OK)
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        api_response = APIResponse(status_code=status.HTTP_201_CREATED, success=True, data=serializer.data)
+        return Response(api_response.get_response(), status=status.HTTP_201_CREATED)
+
+class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     renderer_classes = (ProductJSONRenderer,)
@@ -18,16 +38,22 @@ class ProductListCreateAPIView(ProductServiceMixin, generics.ListCreateAPIView):
         return super().get_queryset().filter(user=self.request.user.id).prefetch_related("categories")
     
     def list(self, request, *args, **kwargs):
-        api_response = self.get_products()
+        queryset = self.get_queryset()
+        serializer = self.serializer_class(queryset, many=True)
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
     
     def create(self, request, *args, **kwargs):
         data = request.data
         data["user"] = request.user.id
-        api_response = self.create_product(data)
+        serializer = self.serializer_class(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        notify_user.delay(request.user.email)
+        api_response = APIResponse(status_code=status.HTTP_201_CREATED, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_201_CREATED)
 
-class ProductRetrieveUpdateDestroyAPIView(ProductServiceMixin, generics.RetrieveUpdateDestroyAPIView):
+class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     renderer_classes = (ProductJSONRenderer,)
@@ -37,13 +63,21 @@ class ProductRetrieveUpdateDestroyAPIView(ProductServiceMixin, generics.Retrieve
         return super().get_queryset().filter(user=self.request.user.id)
     
     def retrieve(self, request, *args, **kwargs):
-        api_response = self.get_product()
+        product = self.get_object()
+        serializer = self.serializer_class(product)
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
     
     def update(self, request, *args, **kwargs):
-        api_response = self.update_product(request.data)
+        product = self.get_object()
+        serializer = self.serializer_class(product, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
     
     def destroy(self, request, *args, **kwargs):
-        api_response = self.delete_product()
+        product = self.get_object()
+        product.delete()
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data={})
         return Response(api_response.get_response(), status=status.HTTP_200_OK)

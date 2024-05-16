@@ -1,7 +1,7 @@
 #!/bin/bash
 cd sample
 echo "Creating Migrations..."
-python manage.py makemigrations djangoapp
+python manage.py makemigrations
 echo ====================================
 
 echo "Starting Migrations..."

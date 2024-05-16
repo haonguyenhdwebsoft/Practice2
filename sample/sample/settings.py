@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "apps.authentication.apps.AuthenticationConfig",
     "apps.profiles.apps.ProfilesConfig",
     "apps.core.apps.CoreConfig",
-    "apps.category.apps.CategoryConfig",
     "apps.product.apps.ProductConfig"
 ]
 
@@ -153,3 +152,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 20,
 }
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = "nguyentansonghao2023@gmail.com"
+EMAIL_HOST_PASSWORD = "zuzs cwlt chsf ysac"
+
+# set the celery broker url 
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://127.0.0.1:6379/0")
+  
+# set the celery result backend 
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://127.0.0.1:6379/0")

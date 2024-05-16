@@ -4,6 +4,8 @@ django-extensions
 djangorestframework
 PyJWT
 six
-psycopg2
+psycopg2-binary
 drf-yasg
 setuptools
+celery
+redis

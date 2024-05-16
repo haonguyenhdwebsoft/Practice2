@@ -9,9 +9,8 @@ from .serializers import (
     LoginSerializer, RegistrationSerializer, UserSerializer
 )
 from apps.core.models import APIResponse
-from .services import AuthenticationServiceMixin, UserServiceMixin
 
-class RegistrationAPIView(AuthenticationServiceMixin, APIView):
+class RegistrationAPIView(APIView):
     # Allow any user (authenticated or not) to hit this endpoint.
     permission_classes = (AllowAny,)
     renderer_classes = (UserJSONRenderer,)
@@ -21,12 +20,16 @@ class RegistrationAPIView(AuthenticationServiceMixin, APIView):
         # The create serializer, validate serializer, save serializer pattern
         # below is common and you will see it a lot throughout this course and
         # your own work later on. Get familiar with it.
-        api_response = self.register(request.data)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        api_response = APIResponse(status_code=status.HTTP_201_CREATED, success=True, data=serializer.data)
         
         return Response(api_response.get_response(), status=status.HTTP_201_CREATED)
 
 
-class LoginAPIView(AuthenticationServiceMixin, APIView):
+class LoginAPIView(APIView):
     permission_classes = (AllowAny,)
     renderer_classes = (UserJSONRenderer,)
     serializer_class = LoginSerializer
@@ -36,12 +39,15 @@ class LoginAPIView(AuthenticationServiceMixin, APIView):
         # the registration endpoint. This is because we don't actually have
         # anything to save. Instead, the `validate` method on our serializer
         # handles everything we need.
-        api_response = self.login(request.data)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
 
 
-class UserRetrieveUpdateAPIView(UserServiceMixin, RetrieveUpdateAPIView):
+class UserRetrieveUpdateAPIView(RetrieveUpdateAPIView):
     permission_classes = (IsAuthenticated,)
     renderer_classes = (UserJSONRenderer,)
     serializer_class = UserSerializer
@@ -50,7 +56,9 @@ class UserRetrieveUpdateAPIView(UserServiceMixin, RetrieveUpdateAPIView):
         # There is nothing to validate or save here. Instead, we just want the
         # serializer to handle turning our `User` object into something that
         # can be JSONified and sent to the client.
-        api_response = self.get_user(request.user)
+        serializer = self.serializer_class(request.user)
+        
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
 
@@ -58,7 +66,25 @@ class UserRetrieveUpdateAPIView(UserServiceMixin, RetrieveUpdateAPIView):
         update_data = request.data
         user = request.user
 
-        api_response = self.update_user(user, update_data)
+        serializer_data = {
+            'username': update_data.get('username', user.username),
+            'email': update_data.get('email', user.email),
+
+            'profile': {
+                'bio': update_data.get('bio', user.profile.bio),
+                'image': update_data.get('image', user.profile.image)
+            }
+        }
+
+        # Here is that serialize, validate, save pattern we talked about
+        # before.
+        serializer = self.serializer_class(
+            user, data=serializer_data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
 

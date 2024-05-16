@@ -1,3 +1,8 @@
+CATEGORY_RESPONSE_FORMAT = {
+    "id": 1,
+    "name": "unknown"
+}
+
 PRODUCT_RESPONSE_FORMAT={
     "id": 1,
     "name": "unknown",
