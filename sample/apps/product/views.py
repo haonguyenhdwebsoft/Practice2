@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from apps.core.models import APIResponse
 from .tasks import notify_user
+from django.db import transaction
 
 # Create your views here.
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
@@ -46,10 +47,11 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         data = request.data
         data["user"] = request.user.id
-        serializer = self.serializer_class(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        notify_user.delay(request.user.email)
+        with transaction.atomic():
+            serializer = self.serializer_class(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            transaction.on_commit(lambda: notify_user.delay(request.user.email))
         api_response = APIResponse(status_code=status.HTTP_201_CREATED, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_201_CREATED)
 
@@ -70,9 +72,10 @@ class ProductRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
     
     def update(self, request, *args, **kwargs):
         product = self.get_object()
-        serializer = self.serializer_class(product, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer = self.serializer_class(product, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
         api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
     
