@@ -18,6 +18,10 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.serializer_class(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.serializer_class(queryset, many=True)
         api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_200_OK)
@@ -40,6 +44,10 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
     
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.serializer_class(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.serializer_class(queryset, many=True)
         api_response = APIResponse(status_code=status.HTTP_200_OK, success=True, data=serializer.data)
         return Response(api_response.get_response(), status=status.HTTP_200_OK)

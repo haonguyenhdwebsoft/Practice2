@@ -3,7 +3,7 @@ from apps.authentication.models import User
 from apps.core.models import TimestampedModel
 
 # Create your models here.
-class Category(models.Model):
+class Category(TimestampedModel):
     name = models.CharField(max_length=100)
 
     def __str__(self):
